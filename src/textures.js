@@ -433,3 +433,100 @@ export function clockTex() {
     g.font = '22px Marker'; g.textAlign = 'center'; g.fillStyle = '#1f9d55'; g.fillText('it is always', 128, 90); g.fillText('launch o\'clock', 128, 182);
   });
 }
+
+// ---------- non-BATON wall posters ----------
+function tape(g, w) {
+  g.fillStyle = 'rgba(240,230,200,0.75)';
+  for (const [x, y, r] of [[30, 20, -0.5], [w - 30, 20, 0.5]]) { g.save(); g.translate(x, y); g.rotate(r); g.fillRect(-36, -12, 72, 24); g.restore(); }
+}
+function pill(g, cx, cy, len, rad, rot) {
+  g.save(); g.translate(cx, cy); g.rotate(rot);
+  const half = len / 2 - rad;
+  const body = () => { g.beginPath(); g.arc(-half, 0, rad, Math.PI / 2, Math.PI * 1.5); g.arc(half, 0, rad, -Math.PI / 2, Math.PI / 2); g.closePath(); };
+  g.save(); body(); g.clip();
+  g.fillStyle = '#f4f4ef'; g.fillRect(-len, -rad, len, rad * 2);
+  g.fillStyle = '#3ddc84'; g.fillRect(0, -rad, len, rad * 2);
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(-len, -rad * 0.75, len * 2, rad * 0.3);
+  g.restore();
+  body(); g.lineWidth = 8; g.strokeStyle = '#111'; g.stroke();
+  g.beginPath(); g.moveTo(0, -rad); g.lineTo(0, rad); g.stroke();
+  g.restore();
+}
+function wrapLines(g, lines, x, y, lh) { lines.forEach((l, i) => g.fillText(l, x, y + i * lh)); }
+
+// kind: 'missing' | 'rug' | 'poor' | 'hang' | 'trust'
+export function funPoster(kind) {
+  return canvasTex(512, 720, (g, w, h) => {
+    g.textAlign = 'center';
+    if (kind === 'missing') {
+      g.fillStyle = '#f4efe2'; g.fillRect(0, 0, w, h); noise(g, w, h, 14000, 0.07);
+      g.fillStyle = '#111'; g.font = '132px Anton'; g.fillText('MISSING', w / 2, 150);
+      // "photo": a dashed box with a parachute crate
+      g.fillStyle = '#d9d2c0'; g.fillRect(86, 180, w - 172, 250);
+      g.strokeStyle = '#111'; g.lineWidth = 4; g.strokeRect(86, 180, w - 172, 250);
+      g.beginPath(); g.arc(w / 2, 270, 80, Math.PI, 0); g.fillStyle = '#e8452c'; g.fill(); g.stroke();
+      g.beginPath(); for (const dx of [-78, -30, 30, 78]) { g.moveTo(w / 2 + dx, 270); g.lineTo(w / 2, 345); } g.stroke();
+      g.fillStyle = '#3ddc84'; g.fillRect(w / 2 - 34, 340, 68, 56); g.strokeRect(w / 2 - 34, 340, 68, 56);
+      g.fillStyle = '#111'; g.font = '22px JBM'; g.fillText('$', w / 2, 376);
+      g.font = '58px Anton'; g.fillText('THE AIRDROP', w / 2, 500);
+      g.font = '22px JBM'; wrapLines(g, ['LAST SEEN: 2024', 'ANSWERS TO "SOON™"', 'IF FOUND, CALL ALON'], w / 2, 548, 32);
+      g.font = '15px JBM'; g.globalAlpha = 0.65; g.fillText('(he will not pick up)', w / 2, 660); g.globalAlpha = 1;
+      // tear-off tabs
+      g.setLineDash([6, 6]); g.beginPath(); g.moveTo(20, 680); g.lineTo(w - 20, 680); g.stroke(); g.setLineDash([]);
+      tape(g, w);
+    } else if (kind === 'rug') {
+      g.fillStyle = '#ffd23a'; g.fillRect(0, 0, w, h); noise(g, w, h, 9000, 0.06);
+      g.strokeStyle = '#111'; g.lineWidth = 16; g.strokeRect(22, 22, w - 44, h - 44);
+      g.fillStyle = '#111'; g.fillRect(22, 22, w - 44, 120);
+      g.fillStyle = '#ffd23a'; g.font = '64px Anton'; g.fillText('⚠ SAFETY FIRST', w / 2, 108);
+      g.fillStyle = '#fff'; g.fillRect(126, 190, w - 252, 250); g.lineWidth = 8; g.strokeRect(126, 190, w - 252, 250);
+      g.fillStyle = '#c8202e'; g.font = '240px Anton'; g.fillText('0', w / 2, 410);
+      g.fillStyle = '#111'; g.font = '62px Anton'; g.fillText('DAYS SINCE', w / 2, 520); g.fillText('LAST RUG', w / 2, 590);
+      g.font = '18px JBM'; g.fillText('PREVIOUS RECORD: 0', w / 2, 650);
+    } else if (kind === 'poor') {
+      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0d2a1e'); gr.addColorStop(1, '#04100b');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h); noise(g, w, h, 10000, 0.07);
+      const rg = g.createRadialGradient(w / 2, 280, 10, w / 2, 280, 230); rg.addColorStop(0, 'rgba(61,220,132,0.45)'); rg.addColorStop(1, 'rgba(61,220,132,0)');
+      g.fillStyle = rg; g.fillRect(0, 0, w, h);
+      pill(g, w / 2, 280, 300, 70, -0.5);
+      g.strokeStyle = '#f2cd2a'; g.lineWidth = 3; g.strokeRect(40, 40, w - 80, h - 80);
+      g.fillStyle = '#ffffff'; g.font = '92px Anton'; g.fillText('STOP BEING', w / 2, 515);
+      g.fillStyle = '#f2cd2a'; g.font = '128px Anton'; g.fillText('POOR', w / 2, 630);
+      g.fillStyle = 'rgba(255,255,255,0.7)'; g.font = '16px JBM'; g.fillText('— MOTIVATION DEPT. · PILL FACTORY', w / 2, 668);
+    } else if (kind === 'hang') {
+      g.fillStyle = '#7ec8ef'; g.fillRect(0, 0, w, h);
+      const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#5bb2e6'); sky.addColorStop(1, '#f6d7a8'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+      noise(g, w, h, 8000, 0.05);
+      // cliff on the left
+      g.fillStyle = '#4a3a2c'; g.beginPath(); g.moveTo(0, 220); g.lineTo(250, 220); g.lineTo(230, 260); g.lineTo(260, 340); g.lineTo(210, 480); g.lineTo(230, h); g.lineTo(0, h); g.closePath(); g.fill();
+      g.fillStyle = '#3c8f4a'; g.fillRect(0, 210, 252, 14);
+      // the chart line going up then off the cliff, dangling
+      g.strokeStyle = '#3ddc84'; g.lineWidth = 12; g.lineJoin = 'round'; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(20, 205); g.lineTo(80, 180); g.lineTo(130, 195); g.lineTo(190, 140); g.lineTo(240, 205); g.stroke();
+      g.strokeStyle = '#e8452c';
+      g.beginPath(); g.moveTo(240, 205); g.quadraticCurveTo(290, 215, 300, 280); g.lineTo(305, 420); g.stroke();
+      // tiny candle hanging on by the wick
+      g.fillStyle = '#e8452c'; g.fillRect(290, 420, 30, 70); g.fillRect(303, 490, 4, 20);
+      g.fillStyle = '#111'; g.font = '86px Anton'; g.fillText('HANG IN', 370, 590 - 20); g.fillText('THERE', 370, 660 - 20);
+      g.textAlign = 'center'; g.font = '16px JBM'; g.fillText('liquidity is a state of mind', w / 2, 690);
+      tape(g, w);
+    } else {
+      // 'trust' — fake award certificate
+      g.fillStyle = '#101010'; g.fillRect(0, 0, w, h); noise(g, w, h, 10000, 0.08);
+      g.strokeStyle = '#c9a34a'; g.lineWidth = 6; g.strokeRect(28, 28, w - 56, h - 56); g.lineWidth = 2; g.strokeRect(44, 44, w - 88, h - 88);
+      g.fillStyle = '#c9a34a'; g.font = '26px ArchivoBlack'; g.fillText('CERTIFIED', w / 2, 120);
+      g.fillStyle = '#ffffff'; g.font = '120px Anton'; g.fillText('TRUST', w / 2, 260); g.fillText('ME BRO', w / 2, 380);
+      // gold seal
+      g.fillStyle = '#c9a34a'; g.beginPath(); for (let i = 0; i < 32; i++) { const a = i / 32 * Math.PI * 2, r = i % 2 ? 62 : 74; g.lineTo(w / 2 + Math.cos(a) * r, 510 + Math.sin(a) * r); } g.closePath(); g.fill();
+      g.fillStyle = '#101010'; g.font = '30px Anton'; g.fillText('100%', w / 2, 505); g.font = '14px JBM'; g.fillText('LEGIT', w / 2, 528);
+      g.fillStyle = 'rgba(255,255,255,0.7)'; g.font = '17px JBM'; g.fillText('AWARDED BY: ALON', w / 2, 630); g.fillText('ALSO SIGNED BY: ALON', w / 2, 655);
+    }
+  });
+}
+
+export function imagePoster(url) {
+  const t = new THREE.TextureLoader().load(url);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso; t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  return t;
+}

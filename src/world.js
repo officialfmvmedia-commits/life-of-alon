@@ -110,17 +110,19 @@ export function buildWorld(scene) {
   }
 
   // ---------------- posters ----------------
-  const poster = (variant, x, y, z, ry, s = 1, tilt = 0) => {
-    const p = mesh(new THREE.PlaneGeometry(0.9 * s, 1.26 * s), std({ map: T.batonPoster(variant), roughness: 0.55 }), x, y, z, W, false);
+  const posterMesh = (map, gw, gh, x, y, z, ry, tilt) => {
+    const p = mesh(new THREE.PlaneGeometry(gw, gh), std({ map, roughness: 0.55 }), x, y, z, W, false);
     p.rotation.y = ry; p.rotation.z = tilt; return p;
   };
-  poster(0, maxX - 0.015, 1.85, -3.4, -Math.PI / 2, 1.25, 0.02);
-  poster(1, maxX - 0.015, 1.7, -1.6, -Math.PI / 2, 1.0, -0.03);
-  poster(2, maxX - 0.015, 1.8, 0.4, -Math.PI / 2, 1.1, 0.015);
-  poster(3, -3.9, 1.8, minZ + 0.015, 0, 1.15, -0.02);
-  poster(1, -2.6, 1.55, minZ + 0.015, 0, 0.7, 0.05);
-  poster(0, 1.55, 1.75, maxZ - 0.015, Math.PI, 1.2, 0.02);
-  { const lp = poster(2, 7.55, 0.62, 4.0, -Math.PI / 2 + 0.05, 0.9); lp.rotation.x = 0; lp.position.x = maxX - 0.2; lp.rotation.order = 'YXZ'; lp.rotation.x = -0.18; }
+  const poster = (map, x, y, z, ry, s = 1, tilt = 0) => posterMesh(map, 0.9 * s, 1.26 * s, x, y, z, ry, tilt);
+  // hero slot: movie-parody image poster, true 3:4 so it isn't stretched
+  posterMesh(T.imagePoster(new URL('../assets/posters/wolf-of-pump-street.webp', import.meta.url).href), 0.96 * 1.3, 1.28 * 1.3, maxX - 0.015, 1.82, -3.4, -Math.PI / 2, 0.012);
+  poster(T.funPoster('missing'), maxX - 0.015, 1.7, -1.55, -Math.PI / 2, 0.92, -0.035);
+  poster(T.funPoster('poor'), maxX - 0.015, 1.82, 0.4, -Math.PI / 2, 1.12, 0.015);
+  poster(T.funPoster('hang'), -3.9, 1.8, minZ + 0.015, 0, 1.08, -0.02);
+  poster(T.funPoster('rug'), -2.6, 1.55, minZ + 0.015, 0, 0.72, 0.05);
+  poster(T.batonPoster(0), 1.55, 1.75, maxZ - 0.015, Math.PI, 1.2, 0.02); // the one BATON poster left
+  { const lp = poster(T.funPoster('trust'), 7.55, 0.62, 4.0, -Math.PI / 2 + 0.05, 0.9); lp.rotation.x = 0; lp.position.x = maxX - 0.2; lp.rotation.order = 'YXZ'; lp.rotation.x = -0.18; }
 
   // whiteboard
   {
@@ -563,7 +565,7 @@ export function buildWorld(scene) {
     const cork = T.canvasTex(256, 170, (c, w2, h2) => { c.fillStyle = '#b98d5e'; c.fillRect(0, 0, w2, h2); for (let i = 0; i < 5000; i++) { c.fillStyle = `rgba(${rand() > 0.5 ? 90 : 220},${rand() > 0.5 ? 60 : 170},40,${rand() * 0.4})`; c.fillRect(rand() * w2, rand() * h2, 2, 2); } });
     mesh(new THREE.PlaneGeometry(1.4, 0.9), std({ map: cork, roughness: 1 }), 0, 0, 0.022, g, false);
     const items = [[-0.45, 0.2, 0.3, 0.38, 0], [-0.05, 0.22, 0.26, 0.2, 1], [0.38, 0.15, 0.36, 0.26, 2], [-0.3, -0.22, 0.24, 0.3, 3], [0.15, -0.2, 0.3, 0.22, 4], [0.5, -0.25, 0.18, 0.18, 5]];
-    const texs = [T.paperTex(0), T.stickyTex('BATON\\nmeeting\\n3am?', '#ffe66d'), T.batonPoster(2), T.paperTex(1), T.stickyTex('gm\\ngm\\ngm', '#9fe7ff'), T.stickyTex(':)', '#ff9fb2')];
+    const texs = [T.paperTex(0), T.stickyTex('BATON\\nmeeting\\n3am?', '#ffe66d'), T.funPoster('rug'), T.paperTex(1), T.stickyTex('gm\\ngm\\ngm', '#9fe7ff'), T.stickyTex(':)', '#ff9fb2')];
     items.forEach(([x, y, w2, h2, k]) => {
       const pp = mesh(new THREE.PlaneGeometry(w2, h2), std({ map: texs[k], roughness: 0.8 }), x, y, 0.026 + k * 0.0005, g, false); pp.rotation.z = rr(-0.12, 0.12);
       mesh(new THREE.SphereGeometry(0.012, 8, 6), phys({ color: ['#d33', '#1f9d55', '#ffd23a'][k % 3], roughness: 0.3 }), x, y + h2 / 2 - 0.03, 0.04, g);
