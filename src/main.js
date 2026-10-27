@@ -274,7 +274,7 @@ async function boot() {
   {
     const kbWorld = (npc) => { const v = npc.kb.clone(); npc.root.localToWorld(v); return [v.x, v.y, v.z]; };
     const playing = () => S.mode !== 'title';
-    audio.addTypist({ pos: kbWorld(trader), level: 1, busy: 0.75, typing: () => playing() && !trader.noTyping && (trader.state === 'trade' || trader.state === 'talk') });
+    audio.addTypist({ pos: kbWorld(trader), level: 1, busy: 0.75, typing: () => playing() && (trader.state === 'trade' || trader.state === 'talk') });
     audio.addTypist({ pos: kbWorld(ansem), level: 0.9, busy: 0.85, typing: () => playing() && !ansem.noTyping && (ansem.state === 'trade' || ansem.state === 'talk' || ansem.state === 'nod') });
     audio.addTypist({ pos: [2.75, 0.85, -1.2], level: 0.55, busy: 0.12 });
     audio.addTypist({ pos: [-6.6, 0.85, -2.6], level: 0.5, busy: 0.08 });

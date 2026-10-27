@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { canvasTex, rand } from './textures.js';
-import { prepRig } from './hifi.js';
+import { prepRig, makeArmIK } from './hifi.js';
 
 export const TRADER_LINES = [
   "bro I'm up... wait",
@@ -230,14 +230,14 @@ export class Trader {
     if (model) this.useHifi(model);
   }
 
-  // hi-fi seated model (models/duve.glb): hands are sculpted into his pockets, so the procedural
-  // head/torso targets drive spine/neck/head bones; pump = seated celebration bounce, headhands = slump + head shake.
+  // hi-fi seated model (models/duve.glb): arms were cut free from the pockets in Blender and are driven by
+  // 2-bone IK to the same keyboard/mouse/fist/head targets as the procedural DUVE; spine/neck/head follow the procedural targets.
   useHifi(model) {
     this.root.clear();
     this.root.add(model);
     this.hifi = prepRig(model, { env: 1.25 });
     this.headBone = this.hifi.B.head.b;
-    this.noTyping = true;
+    this.ikL = makeArmIK(this.hifi, 'l'); this.ikR = makeArmIK(this.hifi, 'r');
     const c = document.createElement('canvas'); c.width = c.height = 128;
     const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
@@ -256,6 +256,16 @@ export class Trader {
     P('chest', lean * 0.5 + 0.1 * sl - br * 0.015 - bounce * 0.06, h.y * 0.08, 0);
     P('neck', h.x * 0.35 + 0.12 * sl, h.y * 0.3 + shake * 0.4, h.z * 0.3);
     P('head', h.x * 0.65 + 0.25 * sl + bob * 0.07 - bounce * 0.25, h.y * 0.62 + shake * 0.6, h.z * 0.7 + bob * 0.02);
+    // arms: wrists to the procedural hand targets (keyboard / mouse / fist / head), elbows out and down
+    const [L, R] = this.arms;
+    this.root.updateMatrixWorld(true);
+    const off = new THREE.Vector3(0, 0.035, -0.07);
+    for (const [ik, a, sg] of [[this.ikL, L, 1], [this.ikR, R, -1]]) {
+      if (!ik) continue;
+      const tw = this.root.localToWorld(a.cur.clone().add(off).add(new THREE.Vector3(sg * 0.05, 0, 0)));
+      const pw = new THREE.Vector3(sg * 0.9, -0.7, -0.3).transformDirection(this.root.matrixWorld);
+      ik(tw, pw);
+    }
   }
 
   setDrained(v) { this.drained = !!v; }
@@ -321,7 +331,6 @@ export class Trader {
     this.torso.position.y = 0.58 + br * 0.004;
     this.mouth.scale.y = 1.35 * (1 + (this.state === 'talk' ? Math.abs(Math.sin(this.stateT * 14)) * 0.5 : this.state === 'pump' ? (this.hyped ? 0.85 : 0.4) : 0));
 
-    if (this.hifi) { this.updateHifi(dt); return; }
     // hand targets
     const [L, R] = this.arms; // L = his left (+x), R = his right (-x, mouse hand)
     const tL = this.kb.clone().add(new THREE.Vector3(0.09, 0, -0.02));
@@ -348,6 +357,7 @@ export class Trader {
     const kh = 1 - Math.exp(-dt * 14);
     L.cur.lerp(tL, kh); R.cur.lerp(tR, kh);
     this.root.updateMatrixWorld(true);
+    if (this.hifi) { this.updateHifi(dt); return; }
     this.solveArm(L, L.cur); this.solveArm(R, R.cur);
   }
 }
