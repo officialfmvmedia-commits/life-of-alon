@@ -69,6 +69,7 @@ let quality = params.get('q') || localStorage.getItem('loa-quality') || 'high';
 
 async function boot() {
   const alonModelP = params.get('alon') === 'old' ? Promise.resolve(null) : loadAlonModel();
+  const duveModelP = params.get('duve') === 'old' ? Promise.resolve(null) : loadGLB('./models/duve.glb', 'DUVE');
   const ansemModelP = params.get('ansem') === 'old' ? Promise.resolve(null) : loadGLB('./models/ansem.glb', 'ANSEM');
   // fonts must be ready before canvas textures are drawn
   await Promise.all(['Anton', 'Marker', 'ArchivoBlack', 'SpaceG', 'JBM'].map(f => document.fonts.load(`40px ${f}`)));
@@ -99,7 +100,7 @@ async function boot() {
   const alonModel = params.get('alon') === 'old' ? null : await alonModelP;
   const player = new Player(scene, world.colliders, alonModel);
   player.pos.set(0.35, 0, -0.9);
-  const trader = new Trader(scene, world);
+  const trader = new Trader(scene, world, await duveModelP);
   const couch = new CouchGuy(scene, world);
   const ansem = new Ansem(scene, world, await ansemModelP); ansem.npcId = 'ansem';
   trader.npcId = 'duve'; trader.name = 'DUVE'; couch.npcId = 'rasmr';
@@ -272,7 +273,7 @@ async function boot() {
   {
     const kbWorld = (npc) => { const v = npc.kb.clone(); npc.root.localToWorld(v); return [v.x, v.y, v.z]; };
     const playing = () => S.mode !== 'title';
-    audio.addTypist({ pos: kbWorld(trader), level: 1, busy: 0.75, typing: () => playing() && (trader.state === 'trade' || trader.state === 'talk') });
+    audio.addTypist({ pos: kbWorld(trader), level: 1, busy: 0.75, typing: () => playing() && !trader.noTyping && (trader.state === 'trade' || trader.state === 'talk') });
     audio.addTypist({ pos: kbWorld(ansem), level: 0.9, busy: 0.85, typing: () => playing() && !ansem.noTyping && (ansem.state === 'trade' || ansem.state === 'talk' || ansem.state === 'nod') });
     audio.addTypist({ pos: [2.75, 0.85, -1.2], level: 0.55, busy: 0.12 });
     audio.addTypist({ pos: [-6.6, 0.85, -2.6], level: 0.5, busy: 0.08 });

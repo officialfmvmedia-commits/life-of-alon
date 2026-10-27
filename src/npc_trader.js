@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { canvasTex, rand } from './textures.js';
+import { prepRig } from './hifi.js';
 
 export const TRADER_LINES = [
   "bro I'm up... wait",
@@ -83,7 +84,7 @@ export function liveChart(seed, accent) {
 }
 
 export class Trader {
-  constructor(scene, world) {
+  constructor(scene, world, model = null) {
     const td = world.traderDesk;
     this.td = td;
     const root = new THREE.Group(); root.name = 'DUVE';
@@ -226,6 +227,35 @@ export class Trader {
     this.lookIdx = 0; this.nextLook = 2; this.lean = 0; this.leanT = 0; this.headYaw = 0;
     this.lineIdx = Math.floor(Math.random() * TRADER_LINES.length);
     for (const a of this.arms) { a.cur.copy(this.kb); }
+    if (model) this.useHifi(model);
+  }
+
+  // hi-fi seated model (models/duve.glb): hands are sculpted into his pockets, so the procedural
+  // head/torso targets drive spine/neck/head bones; pump = seated celebration bounce, headhands = slump + head shake.
+  useHifi(model) {
+    this.root.clear();
+    this.root.add(model);
+    this.hifi = prepRig(model, { env: 1.25 });
+    this.headBone = this.hifi.B.head.b;
+    this.noTyping = true;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+    blob.rotation.x = -Math.PI / 2; blob.position.set(0, 0.006, 0.2); this.root.add(blob);
+  }
+  updateHifi(dt) {
+    const P = this.hifi.pose, t = this.t, h = this.head.rotation, lean = this.torso.rotation.x, st = this.state;
+    const br = Math.sin(t * 2.0);
+    let slump = (this.drained && st === 'trade') ? 1 : 0, bounce = 0, bob = 0, shake = 0;
+    if (st === 'headhands') { slump = 1; shake = Math.sin(this.stateT * 9) * 0.25 * Math.max(0, 1 - this.stateT / 2.6); }
+    if (st === 'pump') bounce = Math.abs(Math.sin(this.stateT * 10)) * (this.hyped ? 1 : 0.6) * Math.max(0, 1 - this.stateT / 2.6);
+    if (this.hyped && st === 'trade') bob = Math.sin(t * 8);
+    this.slumpS = (this.slumpS || 0) + (slump - (this.slumpS || 0)) * (1 - Math.exp(-dt * 3));
+    const sl = this.slumpS;
+    P('spine', lean * 0.5 + 0.1 * sl + br * 0.008 - bounce * 0.08, h.y * 0.06, Math.sin(this.stateT * 10) * 0.03 * bounce);
+    P('chest', lean * 0.5 + 0.1 * sl - br * 0.015 - bounce * 0.06, h.y * 0.08, 0);
+    P('neck', h.x * 0.35 + 0.12 * sl, h.y * 0.3 + shake * 0.4, h.z * 0.3);
+    P('head', h.x * 0.65 + 0.25 * sl + bob * 0.07 - bounce * 0.25, h.y * 0.62 + shake * 0.6, h.z * 0.7 + bob * 0.02);
   }
 
   setDrained(v) { this.drained = !!v; }
@@ -234,7 +264,7 @@ export class Trader {
   upsetLine() { this.react('headhands'); return UPSET_LINES[Math.floor(Math.random() * UPSET_LINES.length)]; }
   nextLine() { if (this.hyped && Math.random() < 0.75) return this.hypeLine(); if (this.drained && Math.random() < 0.6) { this.react('headhands'); return UPSET_LINES[Math.floor(Math.random() * UPSET_LINES.length)]; } this.lineIdx = (this.lineIdx + 1 + Math.floor(Math.random() * (TRADER_LINES.length - 1))) % TRADER_LINES.length; this.react('talk'); return TRADER_LINES[this.lineIdx]; }
   react(kind) { this.state = kind; this.stateT = 0; }
-  headWorld(out) { return this.head.getWorldPosition(out); }
+  headWorld(out) { if (this.headBone) { this.headBone.getWorldPosition(out); out.y += 0.08; return out; } return this.head.getWorldPosition(out); }
 
   solveArm(a, targetLocalRoot) {
     // target (root space) -> shoulder parent (torso) space
@@ -291,6 +321,7 @@ export class Trader {
     this.torso.position.y = 0.58 + br * 0.004;
     this.mouth.scale.y = 1.35 * (1 + (this.state === 'talk' ? Math.abs(Math.sin(this.stateT * 14)) * 0.5 : this.state === 'pump' ? (this.hyped ? 0.85 : 0.4) : 0));
 
+    if (this.hifi) { this.updateHifi(dt); return; }
     // hand targets
     const [L, R] = this.arms; // L = his left (+x), R = his right (-x, mouse hand)
     const tL = this.kb.clone().add(new THREE.Vector3(0.09, 0, -0.02));
