@@ -196,7 +196,7 @@ export class CouchGuy {
   useHifi(model) {
     const phone = this.phone;
     this.root.clear();
-    model.position.set(0, 0, 0.3);
+    model.position.set(0, 0, 0.29);
     this.root.add(model);
     this.hifi = prepRig(model, { env: 1.25 });
     this.headBone = this.hifi.B.head.b;

@@ -341,14 +341,15 @@ export function buildWorld(scene) {
   // couch facing -z (toward the room), back to the front wall
   {
     const g = new THREE.Group(); g.position.set(-4.3, 0, 4.85); W.add(g);
-    mesh(rbox(2.5, 0.38, 0.95, 0.08, 4), M.fabricGreen, 0, 0.26, 0, g);
-    mesh(rbox(2.5, 0.62, 0.26, 0.1, 4), M.fabricGreen, 0, 0.6, 0.36, g);
+    mesh(rbox(2.5, 0.3, 0.95, 0.08, 4), M.fabricGreen, 0, 0.22, 0, g);
+    mesh(rbox(2.5, 0.62, 0.26, 0.1, 4), M.fabricGreen, 0, 0.6, 0.36, g); g.userData.couch = true;
     for (const s of [-1, 1]) mesh(rbox(0.26, 0.6, 0.95, 0.1, 4), M.fabricGreen, s * 1.25, 0.38, 0, g);
-    for (const s of [-1, 1]) { const c = mesh(rbox(1.08, 0.16, 0.7, 0.07, 4), M.fabricGreen, s * 0.56, 0.52, -0.08, g); c.rotation.z = s * 0.01; }
-    const p1 = mesh(rbox(0.42, 0.42, 0.14, 0.07, 4), M.fabricRust, -0.8, 0.76, 0.12, g); p1.rotation.set(-0.3, 0.3, 0.2);
-    const p2 = mesh(rbox(0.38, 0.38, 0.12, 0.06, 4), phys({ color: '#f2cd2a', roughness: 0.95, sheen: 1, sheenColor: new THREE.Color('#fff2a0') }), 0.85, 0.74, 0.14, g); p2.rotation.set(-0.3, -0.2, -0.15);
+    // seat cushions top out at y 0.52 (lowered from 0.60 so the hi-fi RASMR sits on them with feet on the floor)
+    for (const s of [-1, 1]) { const c = mesh(rbox(1.08, 0.16, 0.7, 0.07, 4), M.fabricGreen, s * 0.56, 0.44, -0.08, g); c.rotation.z = s * 0.01; }
+    const p1 = mesh(rbox(0.42, 0.42, 0.14, 0.07, 4), M.fabricRust, -0.8, 0.68, 0.12, g); p1.rotation.set(-0.3, 0.3, 0.2);
+    const p2 = mesh(rbox(0.38, 0.38, 0.12, 0.06, 4), phys({ color: '#f2cd2a', roughness: 0.95, sheen: 1, sheenColor: new THREE.Color('#fff2a0') }), 0.85, 0.66, 0.14, g); p2.rotation.set(-0.3, -0.2, -0.15);
     // throw blanket
-    const bl = mesh(rbox(0.7, 0.04, 0.9, 0.02), phys({ color: '#d9cfc0', roughness: 1, sheen: 1, sheenColor: new THREE.Color('#fff') }), 0.3, 0.62, -0.05, g); bl.rotation.set(0.05, 0.2, 0.06);
+    const bl = mesh(rbox(0.7, 0.04, 0.9, 0.02), phys({ color: '#d9cfc0', roughness: 1, sheen: 1, sheenColor: new THREE.Color('#fff') }), 0.3, 0.54, -0.05, g); bl.rotation.set(0.05, 0.2, 0.06);
     for (const sx of [-1.15, 1.15]) for (const sz of [-0.38, 0.38]) mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.07, 10), M.walnut, sx, 0.035, sz, g);
     col(-4.3, 4.85, 2.6, 1.0);
   }
