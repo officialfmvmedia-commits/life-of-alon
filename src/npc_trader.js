@@ -230,42 +230,53 @@ export class Trader {
     if (model) this.useHifi(model);
   }
 
-  // hi-fi seated model (models/duve.glb): arms were cut free from the pockets in Blender and are driven by
-  // 2-bone IK to the same keyboard/mouse/fist/head targets as the procedural DUVE; spine/neck/head follow the procedural targets.
+  // hi-fi DUVE (arms crossed, sculpted rigid with the chest like ANSEM): no arm bones/IK; spine/neck/head carry all motion.
   useHifi(model) {
     this.root.clear();
     this.root.add(model);
     this.hifi = prepRig(model, { env: 1.25 });
     this.headBone = this.hifi.B.head.b;
-    this.ikL = makeArmIK(this.hifi, 'l'); this.ikR = makeArmIK(this.hifi, 'r');
+    this.noTyping = true; // arms crossed: no keyboard clicks
+    this.seatLift = 0.01; this.seatBack = -0.1;
+    this.hifiModel = model; model.position.set(0, this.seatLift, this.seatBack);
+    this.fitChair();
     const c = document.createElement('canvas'); c.width = c.height = 128;
     const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
     blob.rotation.x = -Math.PI / 2; blob.position.set(0, 0.006, 0.2); this.root.add(blob);
   }
+  // hi-fi DUVE sits low (short legs, big seat): drop his chair seat to 0.24 m, shorten the gas column and move the
+  // backrest back so nothing clips (checked with a vertex-vs-box test).
+  fitChair() {
+    const ch = this.td && this.td.chair; if (!ch) return;
+    const DROP = 0.33, SHIFT = 0.2, BACK = 0.08; // seat top 0.48 -> 0.15, whole chair 0.2 m back from the desk, backrest a further 0.08
+    ch.updateMatrixWorld(true);
+    const bwd = (k) => new THREE.Vector3(0, 0, -1).transformDirection(this.root.matrixWorld).multiplyScalar(k);
+    const meshes = []; ch.traverse(o => { if (o.isMesh) meshes.push(o); });
+    const plan = meshes.map(o => [o, new THREE.Box3().setFromObject(o)]);
+    for (const [o, bb] of plan) {
+      const d = bwd(SHIFT);
+      if (bb.min.y >= 0.39) { d.y -= DROP; if (bb.min.y >= 0.49) d.add(bwd(BACK)); }
+      else if (bb.min.y > 0.06 && bb.max.y > 0.4 && bb.max.y < 0.45) o.visible = false; // gas column (seat now sits on the base)
+      const wp = o.getWorldPosition(new THREE.Vector3()).add(d);
+      o.position.copy(o.parent.worldToLocal(wp)); o.updateMatrixWorld(true);
+    }
+  }
   updateHifi(dt) {
     const P = this.hifi.pose, t = this.t, h = this.head.rotation, lean = this.torso.rotation.x, st = this.state;
     const br = Math.sin(t * 2.0);
     let slump = (this.drained && st === 'trade') ? 1 : 0, bounce = 0, bob = 0, shake = 0;
+    if (this.drained && st === 'trade') shake = Math.sin(t * 1.3) * 0.08 * Math.max(0, Math.sin(t * 0.35));
     if (st === 'headhands') { slump = 1; shake = Math.sin(this.stateT * 9) * 0.25 * Math.max(0, 1 - this.stateT / 2.6); }
     if (st === 'pump') bounce = Math.abs(Math.sin(this.stateT * 10)) * (this.hyped ? 1 : 0.6) * Math.max(0, 1 - this.stateT / 2.6);
     if (this.hyped && st === 'trade') bob = Math.sin(t * 8);
     this.slumpS = (this.slumpS || 0) + (slump - (this.slumpS || 0)) * (1 - Math.exp(-dt * 3));
     const sl = this.slumpS;
+    this.hifiModel.position.y = (this.seatLift || 0) + bounce * 0.025 + Math.max(0, bob) * 0.008;
     P('spine', lean * 0.5 + 0.1 * sl + br * 0.008 - bounce * 0.08, h.y * 0.06, Math.sin(this.stateT * 10) * 0.03 * bounce);
     P('chest', lean * 0.5 + 0.1 * sl - br * 0.015 - bounce * 0.06, h.y * 0.08, 0);
     P('neck', h.x * 0.35 + 0.12 * sl, h.y * 0.3 + shake * 0.4, h.z * 0.3);
     P('head', h.x * 0.65 + 0.25 * sl + bob * 0.07 - bounce * 0.25, h.y * 0.62 + shake * 0.6, h.z * 0.7 + bob * 0.02);
-    // arms: wrists to the procedural hand targets (keyboard / mouse / fist / head), elbows out and down
-    const [L, R] = this.arms;
-    this.root.updateMatrixWorld(true);
-    const off = new THREE.Vector3(0, 0.035, -0.07);
-    for (const [ik, a, sg] of [[this.ikL, L, 1], [this.ikR, R, -1]]) {
-      if (!ik) continue;
-      const tw = this.root.localToWorld(a.cur.clone().add(off).add(new THREE.Vector3(sg * 0.05, 0, 0)));
-      const pw = new THREE.Vector3(sg * 0.9, -0.7, -0.3).transformDirection(this.root.matrixWorld);
-      ik(tw, pw);
-    }
   }
 
   setDrained(v) { this.drained = !!v; }
