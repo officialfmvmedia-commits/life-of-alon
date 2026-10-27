@@ -335,27 +335,44 @@ export class Trader {
     const [L, R] = this.arms; // L = his left (+x), R = his right (-x, mouse hand)
     const tL = this.kb.clone().add(new THREE.Vector3(0.09, 0, -0.02));
     const tR = this.mouse.clone();
-    const typing = this.state === 'trade' || this.state === 'talk';
-    if (typing) {
+    // hi-fi DUVE: hands never leave the desk; every state keeps typing/mousing, body + head carry the emotion
+    const typing = this.hifi ? true : (this.state === 'trade' || this.state === 'talk');
+    if (typing && this.hifi) {
+      const calm = this.state === 'headhands' ? 0.35 : 1; // drained: slower, smaller key taps
+      tL.x += Math.sin(t * 7.3) * 0.02 * calm; tL.y += Math.max(0, Math.sin(t * 17)) * 0.014 * calm; tL.z += Math.sin(t * 3.1) * 0.012;
+      // right hand blends smoothly between mouse and keyboard (no target snaps)
+      const m = THREE.MathUtils.smoothstep(Math.sin(t * 0.7), 0.05, 0.55);
+      const kbR = this.kb.clone().add(new THREE.Vector3(-0.1, Math.max(0, Math.sin(t * 15 + 1)) * 0.014 * calm, -0.02 + Math.sin(t * 6.1) * 0.0));
+      kbR.x += Math.sin(t * 6.1) * 0.015 * calm;
+      const ms = this.mouse.clone().add(new THREE.Vector3(Math.sin(t * 1.7) * 0.025, Math.max(0, Math.sin(t * 9)) * 0.006, Math.cos(t * 2.3) * 0.02));
+      tR.copy(ms).lerp(kbR, m);
+    } else if (typing) {
       tL.x += Math.sin(t * 7.3) * 0.025; tL.y += Math.max(0, Math.sin(t * 17)) * 0.018; tL.z += Math.sin(t * 3.1) * 0.015;
       if (Math.sin(t * 0.7) > 0.3) { tR.copy(this.kb).add(new THREE.Vector3(-0.1, 0, -0.02)); tR.y += Math.max(0, Math.sin(t * 15 + 1)) * 0.018; tR.x += Math.sin(t * 6.1) * 0.02; }
       else { tR.x += Math.sin(t * 1.7) * 0.03 + (moves[0] < 0 ? 0.005 : 0); tR.z += Math.cos(t * 2.3) * 0.025; tR.y += Math.max(0, Math.sin(t * 9)) * 0.008; }
     }
-    if (this.state === 'pump') {
+    if (this.state === 'pump' && !this.hifi) {
       const e = Math.min(1, this.stateT * 4);
       const H = this.hyped ? 1 : 0;
       const up = new THREE.Vector3(-0.22 - H * 0.05, 1.2 + H * 0.16 + Math.abs(Math.sin(this.stateT * (9 + H * 4))) * (0.12 + H * 0.1), 0.22 + H * 0.04);
       tR.lerp(up, e);
       if (H) { const upL = new THREE.Vector3(0.24, 1.3 + Math.abs(Math.sin(this.stateT * 13 + 1.5)) * 0.2, 0.24); tL.lerp(upL, e); }
     }
-    if (this.state === 'headhands') {
+    if (this.state === 'headhands' && !this.hifi) {
       const e = Math.min(1, this.stateT * 4);
       const hp = this.head.getWorldPosition(new THREE.Vector3()); this.root.worldToLocal(hp);
       tL.lerp(hp.clone().add(new THREE.Vector3(0.27, 0.22, -0.04)), e);
       tR.lerp(hp.clone().add(new THREE.Vector3(-0.27, 0.22, -0.04)), e);
     }
-    const kh = 1 - Math.exp(-dt * 14);
+    const kh = 1 - Math.exp(-dt * (this.hifi ? 8 : 14));
     L.cur.lerp(tL, kh); R.cur.lerp(tR, kh);
+    if (this.hifi) { // hard clamp: wrists stay inside the desk zone around keyboard/mouse
+      for (const [a, c] of [[L, this.kb], [R, this.kb]]) {
+        a.cur.x = THREE.MathUtils.clamp(a.cur.x, Math.min(this.kb.x, this.mouse.x) - 0.25, Math.max(this.kb.x, this.mouse.x) + 0.25);
+        a.cur.y = THREE.MathUtils.clamp(a.cur.y, c.y - 0.03, c.y + 0.06);
+        a.cur.z = THREE.MathUtils.clamp(a.cur.z, Math.min(this.kb.z, this.mouse.z) - 0.12, Math.max(this.kb.z, this.mouse.z) + 0.12);
+      }
+    }
     this.root.updateMatrixWorld(true);
     if (this.hifi) { this.updateHifi(dt); return; }
     this.solveArm(L, L.cur); this.solveArm(R, R.cur);
