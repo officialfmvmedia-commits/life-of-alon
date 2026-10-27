@@ -222,10 +222,11 @@ async function boot() {
   const applyAirdrop = (v) => { earnings.hyped = v; trader.setHyped(v); couch.setHyped(v); ansem.setHyped(v); world.whiteboard.set(v); };
   if (osStore.get().airdropDelivered) applyAirdrop(true);
   ansem.setDrained(!!osStore.get().traders.ansem?.drained);
+  couch.setDrained?.(!!osStore.get().traders.rasmr?.drained);
   let ansemPending = false;
-  os.on('drain', (d) => { if (d.id === 'duve') { trader.setDrained(true); duvePending = !trader.hyped; } if (d.id === 'ansem') { ansem.setDrained(true); ansemPending = !ansem.hyped; } });
+  os.on('drain', (d) => { if (d.id === 'duve') { trader.setDrained(true); duvePending = !trader.hyped; } if (d.id === 'ansem') { ansem.setDrained(true); ansemPending = !ansem.hyped; } if (d.id === 'rasmr') couch.setDrained?.(true); });
   os.on('airdrop', () => { applyAirdrop(true); hypePending = true; duvePending = ansemPending = false; });
-  os.on('reset', () => { trader.setDrained(false); ansem.setDrained(false); applyAirdrop(false); duvePending = hypePending = ansemPending = false; });
+  os.on('reset', () => { trader.setDrained(false); ansem.setDrained(false); couch.setDrained?.(false); applyAirdrop(false); duvePending = hypePending = ansemPending = false; });
   function enterComputer(it) {
     S.mode = 'computer'; player.enabled = false; player.object.visible = false;
     UI.prompt(null); UI.hud(false);

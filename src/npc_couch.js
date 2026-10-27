@@ -1,6 +1,6 @@
 // Couch Guy: laid-back NPC on the lounge couch, scrolling his phone. Same soft vinyl-toy style.
 import * as THREE from 'three';
-import { prepRig } from './hifi.js';
+import { prepRig, makeArmIK } from './hifi.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { rand } from './textures.js';
 
@@ -190,32 +190,55 @@ export class CouchGuy {
     if (model) this.useHifi(model);
   }
 
-  // hi-fi model (models/rasmr.glb): seated slouch on the couch, hands sculpted into his pockets, so the
-  // phone rests on his right thigh and he scrolls it with his eyes; head/spine bones carry the reactions.
+  // hi-fi model (models/rasmr.glb, A-pose source rigged in Blender, legs baked seated): slouched on the couch,
+  // both arms on 2-bone IK holding the phone (parented to his right hand bone), thumb-scrolling with the left.
   useHifi(model) {
     const phone = this.phone;
     this.root.clear();
-    model.position.set(0, 0, -0.06);
-    this.root.add(model); this.root.add(phone);
+    model.position.set(0, 0.02, -0.08);
+    this.root.add(model);
     this.hifi = prepRig(model, { env: 1.25 });
     this.headBone = this.hifi.B.head.b;
-    phone.position.set(-0.12, 0.7, 0.3);
-    phone.rotation.set(-1.15, 0.15, 0);
-    phone.scale.setScalar(1.15);
+    this.ikL = makeArmIK(this.hifi, 'l'); this.ikR = makeArmIK(this.hifi, 'r');
+    this.handR = this.hifi.B.handr.b;
+    phone.position.set(0, 0, 0); phone.rotation.set(0, 0, 0); phone.scale.setScalar(1);
+    this.handR.add(phone);
+    this.tgtL = new THREE.Vector3(); this.tgtR = new THREE.Vector3();
   }
+  setDrained(v) { this.drained = !!v; }
   updateHifi(dt) {
-    const P = this.hifi.pose, t = this.t, h = this.head.rotation, st = this.state;
+    const P = this.hifi.pose, t = this.t, h = this.head.rotation, st = this.state, T = this.stateT;
     const br = Math.sin(t * 1.8);
-    const laugh = st === 'laugh' ? Math.abs(Math.sin(this.stateT * 18)) : 0;
-    const hy = this.hyped && st === 'scroll' ? Math.sin(t * 7) : 0;
-    // slouch back into the couch; head tips down to the phone on his lap
-    P('hips', -0.12, 0, 0);
-    P('spine', -0.1 + br * 0.008, h.y * 0.05, 0);
-    P('chest', -0.08 - br * 0.014 - laugh * 0.05, h.y * 0.08, h.z * 0.1);
-    P('neck', h.x * 0.4 + 0.12, h.y * 0.35, h.z * 0.3);
-    P('head', h.x * 0.6 + 0.12 + laugh * 0.04 + hy * 0.05, h.y * 0.6, h.z * 0.6);
-    // phone: slight bob, tiny nudge as he flicks it
-    this.phone.position.y = 0.7 + br * 0.003 + (st === 'scroll' ? Math.max(0, Math.sin(t * 9)) * 0.002 : 0);
+    const laugh = st === 'laugh' ? Math.abs(Math.sin(T * 18)) * Math.max(0, 1 - T / 2) : 0;
+    const hypeUp = this.hyped && st === 'laugh';
+    this.slumpS = (this.slumpS || 0) + ((this.drained && st === 'scroll' ? 1 : 0) - (this.slumpS || 0)) * (1 - Math.exp(-dt * 2));
+    const sl = this.slumpS;
+    // torso: slouched into the couch, sinks further when drained, shakes when laughing
+    P('hips', -0.14 - 0.06 * sl, 0, 0);
+    P('spine', -0.08 + br * 0.008 + 0.05 * sl, h.y * 0.05, 0);
+    P('chest', -0.06 - br * 0.014 - laugh * 0.06 + 0.06 * sl, h.y * 0.08, h.z * 0.1);
+    P('neck', h.x * 0.4 + 0.1 + 0.08 * sl, h.y * 0.35, h.z * 0.3);
+    P('head', h.x * 0.6 + 0.1 + laugh * 0.05 + 0.12 * sl, h.y * 0.6, h.z * 0.6);
+    // hand targets (root-local; +z = forward, +x = his left)
+    const tR = new THREE.Vector3(-0.07, 0.92 - 0.06 * sl, 0.3), tL = new THREE.Vector3(0.05, 0.9 - 0.06 * sl, 0.3);
+    if (st === 'scroll' || st === 'laugh') { tL.y += Math.max(0, Math.sin(t * 9)) * 0.012; tL.z += Math.sin(t * 4.5) * 0.008; } // thumb flicks
+    if (st === 'lookup') { tR.y -= 0.08; tL.y -= 0.08; tL.x += 0.06; }
+    if (st === 'talk') { const g = Math.sin(T * 5); tL.set(0.22, 0.95 + g * 0.05, 0.32); tR.y -= 0.04; }
+    if (laugh) { tR.y += laugh * 0.03; tL.y += laugh * 0.03; }
+    if (hypeUp) { const k = Math.min(1, T * 3) * (T < 1.7 ? 1 : 0); tL.lerp(new THREE.Vector3(0.32, 1.65 + Math.sin(T * 12) * 0.04, 0.12), k); tR.lerp(new THREE.Vector3(-0.32, 1.65 + Math.cos(T * 12) * 0.04, 0.12), k); }
+    const kh = 1 - Math.exp(-dt * 8);
+    this.tgtL.lerp(tL, kh); this.tgtR.lerp(tR, kh);
+    this.root.updateMatrixWorld(true);
+    for (const [ik, tg, sg] of [[this.ikL, this.tgtL, 1], [this.ikR, this.tgtR, -1]]) {
+      if (!ik) continue;
+      ik(this.root.localToWorld(tg.clone()), new THREE.Vector3(sg * 0.8, -0.8, -0.3).transformDirection(this.root.matrixWorld));
+    }
+    // phone in the right hand, screen turned toward his face
+    const hb = this.hifi.B.handr.b; hb.updateWorldMatrix(true, false);
+    this.phone.position.set(0, 0.07, 0.025);
+    const hw = this.headBone.getWorldPosition(new THREE.Vector3()); hw.y += 0.06;
+    this.phone.up.set(0, 1, 0).transformDirection(this.root.matrixWorld);
+    this.phone.lookAt(hw);
   }
 
   drawPhone(scroll) {
