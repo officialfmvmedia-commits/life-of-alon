@@ -311,10 +311,10 @@ export function whiteboardTex(done = false) {
     g.font = '54px Marker'; g.fillStyle = '#1b3fae'; g.fillText('ROADMAP', 50, 80);
     g.strokeStyle = '#1b3fae'; g.lineWidth = 5; g.beginPath(); g.moveTo(50, 95); g.lineTo(330, 92); g.stroke();
     g.font = '34px Marker'; g.fillStyle = '#222';
-    g.fillText('1. build the thing', 60, 160);
+    g.fillText('1. promise airdrop', 60, 160);
     g.fillText('2. AIRDROP', 60, 215);
     g.fillText('3. ???', 60, 270);
-    g.fillStyle = '#1f9d55'; g.fillText('4. send it', 60, 325);
+    g.fillStyle = '#1f9d55'; g.fillText('4. crime shitty narrative', 60, 325);
     { const tw = g.measureText('2. AIRDROP').width;
       if (!done) { g.strokeStyle = '#d33'; g.lineWidth = 4; g.beginPath(); g.moveTo(52, 202); g.lineTo(60 + tw + 12, 206); g.stroke(); }
       else { g.strokeStyle = '#1f9d55'; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(96 + tw, 196); g.lineTo(110 + tw, 214); g.lineTo(140 + tw, 172); g.stroke(); g.lineCap = 'butt';
