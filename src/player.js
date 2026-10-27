@@ -1,6 +1,7 @@
 // Alon: procedural stylised vinyl-toy character + controller.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { tankTex, denimTex, capTex, bandTex, canvasTex, rand } from './textures.js';
 
 const HEAD_R = 0.3;
@@ -191,10 +192,51 @@ export function buildAlon() {
   return { root, body, head, legs, arms, torso };
 }
 
+// ---------- hi-fi skinned Alon (models/alon.glb, rigged in Blender) ----------
+export async function loadAlonModel(url = './models/alon.glb') {
+  try {
+    const gltf = await new GLTFLoader().loadAsync(url);
+    return gltf.scene;
+  } catch (e) { console.warn('[alon] hi-fi model failed, using procedural Alon', e); return null; }
+}
+
+const _q = new THREE.Quaternion(), _e = new THREE.Euler();
+function buildHifi(model) {
+  const root = new THREE.Group(); root.name = 'Alon';
+  const body = new THREE.Group(); root.add(body);
+  body.add(model);
+  const bones = {};
+  model.traverse((o) => {
+    if (o.isBone) bones[o.name.replace(/[^a-z0-9]/gi, '').toLowerCase()] = o;
+    if (o.isMesh) {
+      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      const m = o.material; if (m) { m.envMapIntensity = 1.4; if (m.normalMap) m.normalScale.set(0.9, 0.9); }
+    }
+  });
+  model.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
+  const B = {};
+  for (const [k, b] of Object.entries(bones)) {
+    const w = new THREE.Matrix4().multiplyMatrices(inv, b.matrixWorld);
+    const Qw = new THREE.Quaternion(); w.decompose(new THREE.Vector3(), Qw, new THREE.Vector3());
+    B[k] = { b, qr: b.quaternion.clone(), Qw, Qwi: Qw.clone().invert() };
+  }
+  const blobTex = canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  const blob = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
+  blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; root.add(blob);
+  // rotate bone by an euler expressed in the character's rest model space (X = left, Y = up, Z = forward)
+  const pose = (name, x = 0, y = 0, z = 0) => {
+    const r = B[name]; if (!r) return;
+    _q.setFromEuler(_e.set(x, y, z, 'YXZ'));
+    r.b.quaternion.copy(r.qr).multiply(r.Qwi.clone().multiply(_q).multiply(r.Qw));
+  };
+  return { root, body, hifi: true, B, pose };
+}
+
 // ---------- controller ----------
 export class Player {
-  constructor(scene, colliders) {
-    this.rig = buildAlon();
+  constructor(scene, colliders, model = null) {
+    this.rig = model ? buildHifi(model) : buildAlon();
     this.object = this.rig.root;
     scene.add(this.object);
     this.colliders = colliders;
@@ -253,6 +295,7 @@ export class Player {
     this.moveAmt += (k - this.moveAmt) * (1 - Math.exp(-dt * 8));
     const m = this.moveAmt;
     this.phase += dt * (5 + sp * 2.6) * (m > 0.02 ? 1 : 0);
+    if (this.rig.hifi) return this.animateHifi(dt, sp);
     const s = Math.sin(this.phase);
     const R = this.rig;
     const amp = 0.55 * m + (sp > 3 ? 0.2 : 0);
@@ -268,5 +311,36 @@ export class Player {
     R.head.rotation.x = -0.03 * m;
     R.arms[0].sh.rotation.z = -0.1 - breathe * 0.015 * (1 - m);
     R.arms[1].sh.rotation.z = 0.1 + breathe * 0.015 * (1 - m);
+  }
+  // procedural walk/run/idle on the skinned rig; stride matched to ground speed to minimise foot slide
+  animateHifi(dt, sp) {
+    const R = this.rig, P = R.pose, m = this.moveAmt, t = this.t, ph = this.phase;
+    this.runAmt = (this.runAmt || 0) + ((sp > 3.2 ? 1 : 0) - (this.runAmt || 0)) * (1 - Math.exp(-dt * 6));
+    const run = this.runAmt, idle = 1 - m;
+    const s = Math.sin(ph), c = Math.cos(ph);
+    const amp = m * (0.3 + 0.08 * Math.min(sp, 4.4));
+    const br = Math.sin(t * 2.2);
+    // legs (L leads with +s); knee folds during the forward swing
+    for (const [side, sg] of [['l', 1], ['r', -1]]) {
+      const sw = sg * s * amp;
+      const swingFwd = Math.max(0, sg * c);
+      const knee = m * (0.12 + (0.55 + 0.45 * run) * swingFwd) + (sw < 0 ? -sw * 0.25 : 0);
+      P('thigh' + side, -sw - 0.05 * run * m, 0, sg * -0.02);
+      P('shin' + side, knee);
+      P('foot' + side, 0.8 * (sw - knee) + Math.max(0, -sw) * 0.45);
+      // arms: opposite phase, elbows bend more when running
+      const asw = -sg * s * amp * (0.9 + 0.4 * run);
+      P('upperarm' + side, -asw, 0, sg * (0.1 + 0.08 * run * m + br * 0.015 * idle));
+      P('forearm' + side, -(0.15 + 0.35 * m + 0.7 * run * m) - Math.max(0, asw) * 0.4);
+      P('hand' + side, 0.05, 0, 0);
+      P('shoulder' + side, 0, 0, sg * (br * 0.01 * idle - Math.abs(s) * 0.03 * m));
+    }
+    // torso: bounce, counter-twist, forward lean, breathing
+    R.body.position.y = (Math.abs(c) - 0.6) * (0.05 + 0.03 * run) * m + br * 0.004 * idle;
+    P('hips', 0, s * 0.12 * m, s * 0.03 * m);
+    P('spine', 0.04 * m + 0.12 * run * m + br * 0.01 * idle, -s * 0.07 * m, 0);
+    P('chest', 0.02 * m + 0.06 * run * m - br * 0.012 * idle, -s * 0.06 * m, 0);
+    P('neck', -0.03 * m - 0.1 * run * m, 0, 0);
+    P('head', -0.02 * m + Math.sin(t * 0.7) * 0.03 * idle, Math.sin(t * 0.5) * 0.12 * idle + s * 0.03 * m, Math.sin(t * 0.9) * 0.035 * idle + s * 0.04 * m);
   }
 }

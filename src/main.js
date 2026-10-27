@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { setAniso } from './textures.js';
 import { buildWorld } from './world.js';
-import { Player } from './player.js';
+import { Player, loadAlonModel } from './player.js';
 import { CameraRig } from './camera.js';
 import { Interactions } from './interactions.js';
 import { createPost } from './post.js';
@@ -67,6 +67,7 @@ function downgradeMaterials(root) {
 let quality = params.get('q') || localStorage.getItem('loa-quality') || 'high';
 
 async function boot() {
+  const alonModelP = params.get('alon') === 'old' ? Promise.resolve(null) : loadAlonModel();
   // fonts must be ready before canvas textures are drawn
   await Promise.all(['Anton', 'Marker', 'ArchivoBlack', 'SpaceG', 'JBM'].map(f => document.fonts.load(`40px ${f}`)));
 
@@ -93,7 +94,8 @@ async function boot() {
   camera.position.set(6, 2.6, 5);
 
   const world = buildWorld(scene);
-  const player = new Player(scene, world.colliders);
+  const alonModel = params.get('alon') === 'old' ? null : await alonModelP;
+  const player = new Player(scene, world.colliders, alonModel);
   player.pos.set(0.35, 0, -0.9);
   const trader = new Trader(scene, world);
   const couch = new CouchGuy(scene, world);
@@ -369,7 +371,7 @@ async function boot() {
     if (!osCovers) { if (flags.post) post.render(dt, S.t); else renderer.render(scene, camera); }
     // auto-drop quality if the Mac is struggling for a sustained period
     frames++; acc += dt;
-    if (acc > 2) { const fps = frames / acc; if (fps < 40 && S.mode === 'play' && quality !== 'low') { slow++; if (slow >= 2) { cycleQuality(); slow = 0; } } else slow = 0; frames = 0; acc = 0; }
+    if (acc > 2) { const fps = frames / acc; if (fps < 40 && S.mode === 'play' && quality !== 'low' && flagOn('autoq')) { slow++; if (slow >= 2) { cycleQuality(); slow = 0; } } else slow = 0; frames = 0; acc = 0; }
     requestAnimationFrame(frame);
   }
   if (!flags.post) { renderer.toneMapping = THREE.AgXToneMapping; }
