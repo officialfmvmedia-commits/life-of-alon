@@ -119,10 +119,11 @@ export function buildWorld(scene) {
   posterMesh(T.imagePoster(new URL('../assets/posters/wolf-of-pump-street.webp', import.meta.url).href), 0.96 * 1.3, 1.28 * 1.3, maxX - 0.015, 1.82, -3.4, -Math.PI / 2, 0.012);
   poster(T.funPoster('missing'), maxX - 0.015, 1.7, -1.55, -Math.PI / 2, 0.92, -0.035);
   poster(T.funPoster('poor'), maxX - 0.015, 1.82, 0.4, -Math.PI / 2, 1.12, 0.015);
-  poster(T.funPoster('hang'), -3.9, 1.8, minZ + 0.015, 0, 1.08, -0.02);
+  // user-provided FTX joke poster, true 0.68 aspect
+  posterMesh(T.imagePoster(new URL('../assets/posters/ftx-early-investors.webp', import.meta.url).href), 0.68 * 1.4, 1.4, -3.9, 1.8, minZ + 0.015, 0, -0.02);
   poster(T.funPoster('rug'), -2.6, 1.55, minZ + 0.015, 0, 0.72, 0.05);
   poster(T.batonPoster(0), 1.55, 1.75, maxZ - 0.015, Math.PI, 1.2, 0.02); // the one BATON poster left
-  { const lp = poster(T.funPoster('trust'), 7.55, 0.62, 4.0, -Math.PI / 2 + 0.05, 0.9); lp.rotation.x = 0; lp.position.x = maxX - 0.2; lp.rotation.order = 'YXZ'; lp.rotation.x = -0.18; }
+  { const lp = poster(T.funPoster('hang'), 7.55, 0.62, 4.0, -Math.PI / 2 + 0.05, 0.9); lp.rotation.x = 0; lp.position.x = maxX - 0.2; lp.rotation.order = 'YXZ'; lp.rotation.x = -0.18; }
 
   // whiteboard
   {
