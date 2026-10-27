@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { liveChart, Trader } from './npc_trader.js';
+import { prepRig } from './hifi.js';
 
 export const ANSEM_NAME = 'ANSEM';
 export const ANSEM_LINES = [
@@ -63,7 +64,7 @@ export const ANSEM_BAGS = [
 ];
 
 export class Ansem {
-  constructor(scene, world) {
+  constructor(scene, world, model = null) {
     const td = world.ansemDesk;
     this.td = td; this.name = ANSEM_NAME;
     const root = new THREE.Group(); root.name = ANSEM_NAME;
@@ -183,6 +184,36 @@ export class Ansem {
     this.lookIdx = 1; this.nextLook = 2; this.headYaw = 0; this.nodPhase = 0;
     this.lineIdx = Math.floor(Math.random() * ANSEM_LINES.length);
     for (const a of this.arms) a.cur.copy(this.kb);
+    if (model) this.useHifi(model);
+  }
+
+  // hi-fi seated model (models/ansem.glb): arms are sculpted folded (his signature pose) and rigid with the chest,
+  // so the procedural head/torso targets drive spine/neck/head bones and the keyboard typist is muted.
+  useHifi(model) {
+    this.root.clear();
+    this.root.add(model);
+    this.hifi = prepRig(model, { env: 1.25 });
+    this.headBone = this.hifi.B.head.b;
+    this.noTyping = true;
+    const blobC = document.createElement('canvas'); blobC.width = blobC.height = 128;
+    const g = blobC.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(blobC), transparent: true, depthWrite: false }));
+    blob.rotation.x = -Math.PI / 2; blob.position.set(0, 0.006, 0.25); this.root.add(blob);
+  }
+  updateHifi(dt, st) {
+    const P = this.hifi.pose, t = this.t, h = this.head.rotation, lean = this.torso.rotation.x;
+    const br = Math.sin(t * 1.8);
+    let slump = 0, bob = 0, bounce = 0;
+    if (this.drained && st === 'trade') slump = 1;
+    if (this.hyped && st === 'trade') bob = Math.sin(t * 7.5);
+    if (st === 'fist') bounce = Math.abs(Math.sin(this.stateT * 11)) * Math.max(0, 1 - this.stateT / 1.8);
+    this.slumpS = (this.slumpS || 0) + (slump - (this.slumpS || 0)) * (1 - Math.exp(-dt * 2));
+    const sl = this.slumpS;
+    P('hips', 0, 0, 0);
+    P('spine', lean * 0.5 + 0.1 * sl + br * 0.006 - bounce * 0.06, h.y * 0.06, 0);
+    P('chest', lean * 0.5 + 0.08 * sl - br * 0.012 + bounce * 0.1, h.y * 0.08, Math.sin(t * 0.37) * 0.01);
+    P('neck', h.x * 0.35 + 0.1 * sl, h.y * 0.3, h.z * 0.3);
+    P('head', h.x * 0.65 + 0.22 * sl + bob * 0.06 - bounce * 0.12, h.y * 0.62, h.z * 0.7 + bob * 0.02);
   }
 
   setDrained(v) { this.drained = !!v; }
@@ -200,7 +231,7 @@ export class Ansem {
     this.react(Math.random() < 0.35 ? 'cross' : 'talk'); return ANSEM_LINES[this.lineIdx];
   }
   react(kind) { this.state = kind; this.stateT = 0; }
-  headWorld(out) { return this.head.getWorldPosition(out); }
+  headWorld(out) { if (this.headBone) { this.headBone.getWorldPosition(out); out.y += 0.08; return out; } return this.head.getWorldPosition(out); }
 
   update(dt) {
     this.t += dt; this.stateT += dt;
@@ -234,6 +265,7 @@ export class Ansem {
     this.torso.position.y = 0.58 + br * 0.004;
     this.mouth.scale.y = (s2 === 'talk' || s2 === 'shake') ? 1 + Math.abs(Math.sin(this.stateT * 13)) * 0.9 : 1;
 
+    if (this.hifi) { this.updateHifi(dt, s2); return; }
     const [L, R] = this.arms;
     const tL = this.kb.clone().add(new THREE.Vector3(0.09, 0, -0.02));
     const tR = this.mouse.clone();

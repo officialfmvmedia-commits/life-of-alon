@@ -4,6 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { setAniso } from './textures.js';
 import { buildWorld } from './world.js';
 import { Player, loadAlonModel } from './player.js';
+import { loadGLB } from './hifi.js';
 import { CameraRig } from './camera.js';
 import { Interactions } from './interactions.js';
 import { createPost } from './post.js';
@@ -68,6 +69,7 @@ let quality = params.get('q') || localStorage.getItem('loa-quality') || 'high';
 
 async function boot() {
   const alonModelP = params.get('alon') === 'old' ? Promise.resolve(null) : loadAlonModel();
+  const ansemModelP = params.get('ansem') === 'old' ? Promise.resolve(null) : loadGLB('./models/ansem.glb', 'ANSEM');
   // fonts must be ready before canvas textures are drawn
   await Promise.all(['Anton', 'Marker', 'ArchivoBlack', 'SpaceG', 'JBM'].map(f => document.fonts.load(`40px ${f}`)));
 
@@ -99,7 +101,7 @@ async function boot() {
   player.pos.set(0.35, 0, -0.9);
   const trader = new Trader(scene, world);
   const couch = new CouchGuy(scene, world);
-  const ansem = new Ansem(scene, world); ansem.npcId = 'ansem';
+  const ansem = new Ansem(scene, world, await ansemModelP); ansem.npcId = 'ansem';
   trader.npcId = 'duve'; trader.name = 'DUVE'; couch.npcId = 'rasmr';
   trader.interaction.actions = true; couch.interaction.actions = true;
   const fx = buildFX(scene, world);
@@ -271,7 +273,7 @@ async function boot() {
     const kbWorld = (npc) => { const v = npc.kb.clone(); npc.root.localToWorld(v); return [v.x, v.y, v.z]; };
     const playing = () => S.mode !== 'title';
     audio.addTypist({ pos: kbWorld(trader), level: 1, busy: 0.75, typing: () => playing() && (trader.state === 'trade' || trader.state === 'talk') });
-    audio.addTypist({ pos: kbWorld(ansem), level: 0.9, busy: 0.85, typing: () => playing() && (ansem.state === 'trade' || ansem.state === 'talk' || ansem.state === 'nod') });
+    audio.addTypist({ pos: kbWorld(ansem), level: 0.9, busy: 0.85, typing: () => playing() && !ansem.noTyping && (ansem.state === 'trade' || ansem.state === 'talk' || ansem.state === 'nod') });
     audio.addTypist({ pos: [2.75, 0.85, -1.2], level: 0.55, busy: 0.12 });
     audio.addTypist({ pos: [-6.6, 0.85, -2.6], level: 0.5, busy: 0.08 });
     audio.addTypist({ pos: [-6.6, 0.85, -0.4], level: 0.5, busy: 0.06 });
