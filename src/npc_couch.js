@@ -1,5 +1,6 @@
 // Couch Guy: laid-back NPC on the lounge couch, scrolling his phone. Same soft vinyl-toy style.
 import * as THREE from 'three';
+import { prepRig } from './hifi.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { rand } from './textures.js';
 
@@ -36,7 +37,7 @@ export const COUCH_HYPE_LINES = [
 ];
 
 export class CouchGuy {
-  constructor(scene, world) {
+  constructor(scene, world, model = null) {
     this.name = COUCH_NAME;
     // couch group at (-4.3, 0, 4.85) facing -z; sit on the left cushion
     const root = new THREE.Group(); root.name = COUCH_NAME;
@@ -186,6 +187,35 @@ export class CouchGuy {
     for (const a of this.arms) a.cur.copy(this.restL);
     this.update(0.016);
     for (let i = 0; i < 30; i++) this.update(0.05);
+    if (model) this.useHifi(model);
+  }
+
+  // hi-fi model (models/rasmr.glb): seated slouch on the couch, hands sculpted into his pockets, so the
+  // phone rests on his right thigh and he scrolls it with his eyes; head/spine bones carry the reactions.
+  useHifi(model) {
+    const phone = this.phone;
+    this.root.clear();
+    model.position.set(0, 0, -0.06);
+    this.root.add(model); this.root.add(phone);
+    this.hifi = prepRig(model, { env: 1.25 });
+    this.headBone = this.hifi.B.head.b;
+    phone.position.set(-0.12, 0.7, 0.3);
+    phone.rotation.set(-1.15, 0.15, 0);
+    phone.scale.setScalar(1.15);
+  }
+  updateHifi(dt) {
+    const P = this.hifi.pose, t = this.t, h = this.head.rotation, st = this.state;
+    const br = Math.sin(t * 1.8);
+    const laugh = st === 'laugh' ? Math.abs(Math.sin(this.stateT * 18)) : 0;
+    const hy = this.hyped && st === 'scroll' ? Math.sin(t * 7) : 0;
+    // slouch back into the couch; head tips down to the phone on his lap
+    P('hips', -0.12, 0, 0);
+    P('spine', -0.1 + br * 0.008, h.y * 0.05, 0);
+    P('chest', -0.08 - br * 0.014 - laugh * 0.05, h.y * 0.08, h.z * 0.1);
+    P('neck', h.x * 0.4 + 0.12, h.y * 0.35, h.z * 0.3);
+    P('head', h.x * 0.6 + 0.12 + laugh * 0.04 + hy * 0.05, h.y * 0.6, h.z * 0.6);
+    // phone: slight bob, tiny nudge as he flicks it
+    this.phone.position.y = 0.7 + br * 0.003 + (st === 'scroll' ? Math.max(0, Math.sin(t * 9)) * 0.002 : 0);
   }
 
   drawPhone(scroll) {
@@ -207,7 +237,7 @@ export class CouchGuy {
   }
   hypeLine() { this.react('laugh'); return COUCH_HYPE_LINES[Math.floor(Math.random() * COUCH_HYPE_LINES.length)]; }
   react(kind) { this.state = kind; this.stateT = 0; }
-  headWorld(out) { return this.head.getWorldPosition(out); }
+  headWorld(out) { if (this.headBone) { this.headBone.getWorldPosition(out); out.y += 0.08; return out; } return this.head.getWorldPosition(out); }
 
   solveArm(a, targetLocalRoot, pole) {
     const w = this.root.localToWorld(targetLocalRoot.clone());
@@ -247,6 +277,7 @@ export class CouchGuy {
     this.torso.rotation.x += (leanT - this.torso.rotation.x) * (1 - Math.exp(-dt * 4));
     this.torso.position.y = 0.67 + Math.sin(t * 1.8) * 0.003;
     this.mouthOpen.scale.y += ((0.05 + mouthT * 0.9) - this.mouthOpen.scale.y) * (1 - Math.exp(-dt * 18));
+    if (this.hifi) { this.updateHifi(dt); return; }
 
     // leg bounce (his right leg), the other foot taps slowly
     const [Lg, Rg] = this.legs;

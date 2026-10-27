@@ -70,6 +70,7 @@ let quality = params.get('q') || localStorage.getItem('loa-quality') || 'high';
 async function boot() {
   const alonModelP = params.get('alon') === 'old' ? Promise.resolve(null) : loadAlonModel();
   const duveModelP = params.get('duve') === 'old' ? Promise.resolve(null) : loadGLB('./models/duve.glb', 'DUVE');
+  const rasmrModelP = params.get('rasmr') === 'old' ? Promise.resolve(null) : loadGLB('./models/rasmr.glb', 'RASMR');
   const ansemModelP = params.get('ansem') === 'old' ? Promise.resolve(null) : loadGLB('./models/ansem.glb', 'ANSEM');
   // fonts must be ready before canvas textures are drawn
   await Promise.all(['Anton', 'Marker', 'ArchivoBlack', 'SpaceG', 'JBM'].map(f => document.fonts.load(`40px ${f}`)));
@@ -101,7 +102,7 @@ async function boot() {
   const player = new Player(scene, world.colliders, alonModel);
   player.pos.set(0.35, 0, -0.9);
   const trader = new Trader(scene, world, await duveModelP);
-  const couch = new CouchGuy(scene, world);
+  const couch = new CouchGuy(scene, world, await rasmrModelP);
   const ansem = new Ansem(scene, world, await ansemModelP); ansem.npcId = 'ansem';
   trader.npcId = 'duve'; trader.name = 'DUVE'; couch.npcId = 'rasmr';
   trader.interaction.actions = true; couch.interaction.actions = true;
