@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Life of Alon</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cg transform=%22rotate(-45 32 32)%22%3E%3Crect x=%224%22 y=%2220%22 width=%2256%22 height=%2224%22 rx=%2212%22 fill=%22%23f4f4ee%22/%3E%3Cpath d=%22M16 20h16v24H16a12 12 0 0 1 0-24z%22 fill=%22%2355e392%22/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="stylesheet" href="./style.css" />
+<link rel="stylesheet" href="./src/os/os.css" />
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="loading"><div class="ld-pill"><span></span><span></span></div><p>booting HQ…</p></div>
+
+<section id="title" class="hidden">
+  <div class="t-inner">
+    <div class="t-kicker">CHAPTER 0 · THE HQ</div>
+    <h1>LIFE OF<br/><span>ALON</span></h1>
+    <p class="t-sub">a day at the pill factory</p>
+    <button id="startBtn">PRESS START</button>
+    <div class="t-controls">
+      <span><b>WASD</b> move</span><span><b>SHIFT</b> run</span><span><b>DRAG</b> look</span><span><b>E</b> interact</span>
+    </div>
+  </div>
+</section>
+
+<div id="hud" class="hidden">
+  <div class="hud-loc"><i></i>PUMP HQ · NIGHT SHIFT</div>
+  <div class="hud-keys"><b>WASD</b> move · <b>SHIFT</b> run · <b>DRAG</b> look · <b>SCROLL</b> zoom · <b>E</b> interact</div>
+</div>
+<div id="prompt" class="hidden"><kbd>E</kbd><span></span></div>
+<div id="toast" class="hidden"></div>
+<div id="bubble" class="hidden"><b class="who">DUVE</b><span></span></div>
+
+<section id="computer" class="hidden"><div id="os-root"></div></section>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
