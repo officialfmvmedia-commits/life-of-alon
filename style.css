@@ -96,3 +96,8 @@ kbd{font-family:ArchivoBlack;display:inline-grid;place-content:center;min-width:
 .hud-snd{position:absolute;top:20px;right:24px;pointer-events:auto;display:flex;align-items:center;gap:7px;font-family:JBM;font-size:11px;color:#e7e2d4;padding:7px 12px;border-radius:30px;background:#0009;border:1px solid #ffffff18;backdrop-filter:blur(6px);cursor:pointer}
 .hud-snd:hover{background:#000c;border-color:#ffffff33}
 .hud-snd.off{color:#9a958a}
+
+.t-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#xLink{font-family:ArchivoBlack;font-size:14px;letter-spacing:.06em;padding:15px 24px;border-radius:60px;color:#f6f2e6;text-decoration:none;border:1.5px solid #55e39288;background:#0c120ecc;box-shadow:0 0 22px #55e39222;transition:transform .15s,border-color .15s,box-shadow .15s}
+#xLink b{color:#55e392;font-weight:400}
+#xLink:hover{transform:translateY(-2px);border-color:#55e392;box-shadow:0 0 30px #55e39255}
